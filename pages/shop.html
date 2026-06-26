@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevRecruit — Boutique</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="../css/layout.css">
+  <style>
+    .shop-section-title {
+      font-size:1.1rem;font-weight:700;color:var(--text);
+      margin:2rem 0 1rem;display:flex;align-items:center;gap:.5rem;
+    }
+    .shop-section-title:first-of-type { margin-top:0; }
+
+    /* Coins */
+    .current-coins {
+      display:inline-flex;align-items:center;gap:.6rem;
+      background:var(--primary-lt);border:1.5px solid var(--primary);
+      border-radius:var(--radius);padding:.7rem 1.2rem;
+      font-weight:700;font-size:1rem;color:var(--primary);margin-bottom:1.5rem;
+    }
+    .packages-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem; }
+    .pkg-card {
+      background:var(--surface);border:1.5px solid var(--border);
+      border-radius:var(--radius);padding:1.4rem 1.2rem;text-align:center;
+      transition:all var(--transition);position:relative;cursor:pointer;
+    }
+    .pkg-card:hover { border-color:var(--primary);transform:translateY(-2px);box-shadow:var(--shadow-md); }
+    .pkg-card.popular { border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,108,247,0.15); }
+    .popular-badge {
+      position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+      background:var(--primary);color:#fff;font-size:.7rem;font-weight:700;
+      padding:.2em .7em;border-radius:999px;white-space:nowrap;
+    }
+    .pkg-coins { font-size:1.8rem;font-weight:800;color:var(--text);margin-bottom:.3rem; }
+    .pkg-coins-label { font-size:.8rem;color:var(--muted);margin-bottom:.8rem; }
+    .pkg-price { font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:1rem; }
+    .pkg-equiv { font-size:.75rem;color:var(--muted);margin-bottom:1rem; }
+
+    /* Boosts */
+    .boost-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem; }
+    .boost-card {
+      background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);
+      padding:1.4rem 1.2rem;text-align:center;transition:all var(--transition);cursor:pointer;position:relative;
+    }
+    .boost-card:hover { border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-md); }
+    .boost-card.urgent { border-color:#e55;box-shadow:0 0 0 3px rgba(230,80,80,0.13); }
+    .boost-icon { font-size:2rem;margin-bottom:.5rem; }
+    .boost-name { font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.3rem; }
+    .boost-desc { font-size:.8rem;color:var(--muted);margin-bottom:.8rem; }
+    .boost-price { font-size:1.4rem;font-weight:800;color:var(--accent);margin-bottom:1rem; }
+    .boost-card.urgent .boost-price { color:#e55; }
+
+    /* Premium */
+    .premium-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.2rem; }
+    .premium-card {
+      background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);
+      padding:1.6rem 1.4rem;transition:all var(--transition);position:relative;
+    }
+    .premium-card.dev { border-color:var(--primary); }
+    .premium-card.talent { border-color:var(--accent); }
+    .premium-header { display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem; }
+    .premium-icon { font-size:1.5rem; }
+    .premium-name { font-size:1.1rem;font-weight:800;color:var(--text); }
+    .premium-subtitle { font-size:.82rem;color:var(--muted);margin-bottom:1rem; }
+    .premium-price { font-size:1.6rem;font-weight:800;color:var(--primary);margin-bottom:1.2rem; }
+    .premium-card.talent .premium-price { color:var(--accent); }
+    .premium-features { list-style:none;padding:0;margin:0 0 1.2rem;display:flex;flex-direction:column;gap:.5rem; }
+    .premium-features li { font-size:.875rem;color:var(--text2);display:flex;align-items:center;gap:.5rem; }
+    .premium-features li::before { content:"✅";font-size:.8rem; }
+
+    /* Packs entreprises */
+    .studio-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem; }
+    .studio-card {
+      background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);
+      padding:1.5rem 1.2rem;text-align:center;transition:all var(--transition);cursor:pointer;position:relative;
+    }
+    .studio-card:hover { transform:translateY(-2px);box-shadow:var(--shadow-md); }
+    .studio-card.best { border-color:#a855f7;box-shadow:0 0 0 3px rgba(168,85,247,0.13); }
+    .studio-tier { font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem; }
+    .studio-price { font-size:1.5rem;font-weight:800;color:var(--text);margin-bottom:.2rem; }
+    .studio-period { font-size:.8rem;color:var(--muted);margin-bottom:.8rem; }
+    .studio-features { font-size:.8rem;color:var(--text2);line-height:1.7;margin-bottom:1rem;text-align:left; }
+    .studio-badge { position:absolute;top:-10px;right:1rem;background:#a855f7;color:#fff;font-size:.7rem;font-weight:700;padding:.2em .7em;border-radius:999px; }
+
+    /* Stripe info */
+    .stripe-info {
+      background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);
+      padding:1.2rem 1.5rem;margin-top:2rem;display:flex;align-items:flex-start;gap:.8rem;
+    }
+    .stripe-info .icon { font-size:1.5rem;flex-shrink:0; }
+    .stripe-info p { font-size:.875rem;color:var(--text2);line-height:1.6; }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="app-root">
+  <div id="app-layout">
+    <main class="page-content">
+      <div class="page-heading">🛒 Boutique</div>
+
+      <div class="current-coins">🪙 Mon solde : <span id="coins-bal">…</span> coins</div>
+
+      <!-- ── COINS ── -->
+      <div class="shop-section-title">🪙 Acheter des coins</div>
+      <div class="packages-grid">
+        <div class="pkg-card" onclick="buyCoins(50, 0.60)">
+          <div class="pkg-coins">50</div><div class="pkg-coins-label">coins</div>
+          <div class="pkg-price">0,60 €</div><div class="pkg-equiv">= 1 annonce</div>
+          <button class="btn btn-secondary btn-sm btn-full">Acheter</button>
+        </div>
+        <div class="pkg-card" onclick="buyCoins(100, 1.20)">
+          <div class="pkg-coins">100</div><div class="pkg-coins-label">coins</div>
+          <div class="pkg-price">1,20 €</div><div class="pkg-equiv">= 2 annonces</div>
+          <button class="btn btn-secondary btn-sm btn-full">Acheter</button>
+        </div>
+        <div class="pkg-card" onclick="buyCoins(250, 3.00)">
+          <div class="pkg-coins">250</div><div class="pkg-coins-label">coins</div>
+          <div class="pkg-price">3,00 €</div><div class="pkg-equiv">= 5 annonces</div>
+          <button class="btn btn-secondary btn-sm btn-full">Acheter</button>
+        </div>
+        <div class="pkg-card popular" onclick="buyCoins(1000, 12.00)">
+          <div class="popular-badge">⭐ Populaire</div>
+          <div class="pkg-coins">1 000</div><div class="pkg-coins-label">coins</div>
+          <div class="pkg-price">12,00 €</div><div class="pkg-equiv">= 20 annonces</div>
+          <button class="btn btn-primary btn-sm btn-full">Acheter</button>
+        </div>
+        <div class="pkg-card" onclick="buyCoins(2300, 27.60)">
+          <div class="pkg-coins">2 300</div><div class="pkg-coins-label">coins</div>
+          <div class="pkg-price">27,60 €</div><div class="pkg-equiv">= 46 annonces</div>
+          <button class="btn btn-secondary btn-sm btn-full">Acheter</button>
+        </div>
+      </div>
+
+      <!-- ── BOOST D'ANNONCES ── -->
+      <div class="shop-section-title">🚀 Booster une annonce</div>
+      <div class="boost-grid">
+        <div class="boost-card" onclick="goStripe('https://buy.stripe.com/test_28EbJ1dhS8RO87d1h95AQ09')">
+          <div class="boost-icon">⚡</div>
+          <div class="boost-name">Mise en avant 24h</div>
+          <div class="boost-desc">Ton annonce apparaît en tête du fil pendant 24 heures.</div>
+          <div class="boost-price">1 €</div>
+          <button class="btn btn-secondary btn-sm btn-full">Activer</button>
+        </div>
+        <div class="boost-card" onclick="goStripe('https://buy.stripe.com/test_aFadR96Tuc402MTf7Z5AQ0a')">
+          <div class="boost-icon">🌟</div>
+          <div class="boost-name">Mise en avant 7 jours</div>
+          <div class="boost-desc">Une semaine entière de visibilité maximale pour ton projet.</div>
+          <div class="boost-price">5 €</div>
+          <button class="btn btn-secondary btn-sm btn-full">Activer</button>
+        </div>
+        <div class="boost-card urgent" onclick="goStripe('https://buy.stripe.com/test_aFadR96Tuc402MTf7Z5AQ0a')">
+          <div class="boost-icon">🔥</div>
+          <div class="boost-name">Bannière "Offre Urgente"</div>
+          <div class="boost-desc">Badge rouge visible + priorité dans l'algorithme. Effet immédiat.</div>
+          <div class="boost-price">5 €</div>
+          <button class="btn btn-sm btn-full" style="background:#e55;color:#fff;border:none;">Activer</button>
+        </div>
+      </div>
+
+      <!-- ── PREMIUM ABONNEMENTS ── -->
+      <div class="shop-section-title">👑 Abonnements Premium</div>
+      <div class="premium-grid">
+        <!-- Premium Développeur -->
+        <div class="premium-card dev">
+          <div class="premium-header">
+            <span class="premium-icon">⭐</span>
+            <span class="premium-name">Premium Développeur</span>
+          </div>
+          <div class="premium-subtitle">Pour les propriétaires de projets</div>
+          <div class="premium-price">4,99 €<span style="font-size:.9rem;font-weight:400;color:var(--muted)">/mois</span></div>
+          <ul class="premium-features">
+            <li>Annonces illimitées</li>
+            <li>Badge vérifié ⭐</li>
+            <li>Recherche avancée</li>
+            <li>Voir qui a visité ton profil</li>
+            <li>Équipe privée</li>
+            <li>Statistiques d'annonces</li>
+          </ul>
+          <button class="btn btn-primary btn-full" onclick="goStripe('https://buy.stripe.com/test_bJebJ1cdO9VS3QX4tl5AQ0b')">S'abonner</button>
+        </div>
+        <!-- Premium Talent -->
+        <div class="premium-card talent">
+          <div class="premium-header">
+            <span class="premium-icon">🏅</span>
+            <span class="premium-name">Premium Talent</span>
+          </div>
+          <div class="premium-subtitle">Pour les créateurs &amp; modélisateurs</div>
+          <div class="premium-price">2,99 €<span style="font-size:.9rem;font-weight:400;color:var(--muted)">/mois</span></div>
+          <ul class="premium-features">
+            <li>Profil mis en avant</li>
+            <li>Badge Pro 🏅</li>
+            <li>Portfolio étendu</li>
+            <li>Apparition en premier dans les recherches</li>
+            <li>Statistiques de profil</li>
+          </ul>
+          <button class="btn btn-full" style="background:var(--accent);color:#fff;border:none;" onclick="goStripe('https://buy.stripe.com/test_bJe00j1za3xucntgc35AQ0d')">S'abonner</button>
+        </div>
+      </div>
+
+      <!-- ── PACKS ENTREPRISES ── -->
+      <div class="shop-section-title">🏢 Packs Entreprises &amp; Studios</div>
+      <div class="studio-grid">
+        <div class="studio-card" onclick="goStripe('https://buy.stripe.com/test_28EfZh91C9VSdrx5xp5AQ0f')">
+          <div class="studio-tier">Starter</div>
+          <div class="studio-price">9,99 €</div>
+          <div class="studio-period">/mois</div>
+          <div class="studio-features">
+            ✔ 10 annonces/mois<br>
+            ✔ Recrutement standard<br>
+            ✔ Support normal
+          </div>
+          <button class="btn btn-secondary btn-sm btn-full">Choisir</button>
+        </div>
+        <div class="studio-card best" onclick="goStripe('https://buy.stripe.com/test_5kQ6oHcdO2tq4V1f7Z5AQ0g')">
+          <div class="studio-badge">⭐ Recommandé</div>
+          <div class="studio-tier">Pro</div>
+          <div class="studio-price">29,99 €</div>
+          <div class="studio-period">/mois</div>
+          <div class="studio-features">
+            ✔ Annonces illimitées<br>
+            ✔ Recrutement prioritaire<br>
+            ✔ Statistiques avancées<br>
+            ✔ Support rapide
+          </div>
+          <button class="btn btn-primary btn-sm btn-full">Choisir</button>
+        </div>
+        <div class="studio-card" onclick="goStripe('https://buy.stripe.com/test_28E4gzb9K4By0EL6Bt5AQ0e')">
+          <div class="studio-tier">Studio</div>
+          <div class="studio-price">99,99 €</div>
+          <div class="studio-period">/mois</div>
+          <div class="studio-features">
+            ✔ Annonces illimitées<br>
+            ✔ Recrutement ultra-prioritaire<br>
+            ✔ Statistiques complètes<br>
+            ✔ Support dédié 24/7<br>
+            ✔ Badge Studio exclusif
+          </div>
+          <button class="btn btn-sm btn-full" style="background:#a855f7;color:#fff;border:none;">Choisir</button>
+        </div>
+      </div>
+
+      <div class="stripe-info">
+        <div class="icon">🔒</div>
+        <p>
+          <strong>Paiement sécurisé via Stripe.</strong><br>
+          Tes données bancaires ne sont jamais stockées sur nos serveurs. Tous les paiements sont traités par Stripe, la référence mondiale du paiement en ligne.
+        </p>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script type="module">
+import { supabase } from '../js/supabase-config.js';
+import { requireAuth, toast } from '../js/layout.js';
+
+let userId = null;
+
+requireAuth(async (user, profile) => {
+  userId = user.id;
+  document.getElementById('coins-bal').textContent = profile.coins || 0;
+  document.getElementById('page-title').textContent = 'Boutique';
+});
+
+window.goStripe = (url) => {
+  if (!userId) { toast('Connexion requise.', 'error'); return; }
+  window.open(url + `?client_reference_id=${userId}`, '_blank');
+};
+
+window.buyCoins = async (coins, price) => {
+  toast(`Redirection vers le paiement de ${price.toFixed(2)} € pour ${coins} coins…`, 'info');
+  const stripeLinks = {
+    50:   'https://buy.stripe.com/REMPLACE_50',
+    100:  'https://buy.stripe.com/REMPLACE_100',
+    250:  'https://buy.stripe.com/REMPLACE_250',
+    1000: 'https://buy.stripe.com/REMPLACE_1000',
+    2300: 'https://buy.stripe.com/REMPLACE_2300',
+  };
+  const url = stripeLinks[coins];
+  if (url && !url.includes('REMPLACE')) {
+    window.open(url + `?client_reference_id=${userId}`, '_blank');
+  } else {
+    toast('La boutique coins sera disponible très prochainement !', 'info');
+  }
+};
+</script>
+</body>
+</html>

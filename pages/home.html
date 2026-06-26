@@ -1,0 +1,286 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevRecruit — Accueil</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="../css/layout.css">
+  <style>
+    .page-loader { position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;font-size:2rem; }
+    .feed { display:flex;flex-direction:column;gap:1rem; }
+    .post-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow var(--transition),transform var(--transition); }
+    .post-card:hover { box-shadow:var(--shadow-md);transform:translateY(-1px); }
+    .post-image { width:100%;height:180px;object-fit:cover;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:3rem;color:var(--muted); }
+    .post-image img { width:100%;height:100%;object-fit:cover; }
+    .post-body { padding:1.2rem; }
+    .post-header { display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.5rem; }
+    .post-title { font-size:1.05rem;font-weight:700;color:var(--text); }
+    .post-theme { font-size:.75rem;font-weight:600;color:var(--muted);background:var(--surface2);padding:.2em .6em;border-radius:999px;white-space:nowrap; }
+    .post-desc { font-size:.875rem;color:var(--text2);line-height:1.55;display:none;margin-top:.6rem; }
+    .post-desc.expanded { display:block; }
+    .post-chips { display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.7rem;display:none; }
+    .post-chips.expanded { display:flex; }
+    .post-footer { display:flex;align-items:center;justify-content:space-between;margin-top:1rem;flex-wrap:wrap;gap:.5rem; }
+    .post-owner { font-size:.8rem;color:var(--muted); }
+    .expand-btn { background:none;border:none;color:var(--primary);font-size:.85rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.3rem;padding:0; }
+    .expand-btn .arrow { display:inline-block;transition:transform var(--transition); }
+    .expand-btn.open .arrow { transform:rotate(180deg); }
+    .dm-row { display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);gap:.6rem;align-items:flex-end; }
+    .dm-row.expanded { display:flex; }
+    .dm-input { flex:1;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .8rem;font-size:.875rem;background:var(--bg);color:var(--text);resize:none;font-family:inherit;max-height:100px;outline:none;transition:border-color var(--transition); }
+    .dm-input:focus { border-color:var(--primary); }
+    .filters { display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.2rem; }
+    .filter-btn { background:var(--surface);border:1.5px solid var(--border);border-radius:999px;padding:.35rem .9rem;font-size:.82rem;font-weight:600;color:var(--text2);cursor:pointer;transition:all var(--transition); }
+    .filter-btn:hover { border-color:var(--primary);color:var(--primary); }
+    .filter-btn.active { background:var(--primary-lt);border-color:var(--primary);color:var(--primary); }
+    .empty-state { text-align:center;padding:4rem 1rem;color:var(--muted); }
+    .empty-state .empty-icon { font-size:3rem;margin-bottom:.8rem; }
+  </style>
+</head>
+<body>
+<div id="page-loader" class="page-loader">⏳</div>
+<div id="toast-container"></div>
+<div class="app-root" id="app-root" style="display:none">
+  <div id="app-layout">
+    <main class="page-content">
+      <div class="page-heading">🏠 Accueil</div>
+      <div class="filters" id="filters-row">
+        <button class="filter-btn active" onclick="filterPosts('all',this)">Tous</button>
+        <button class="filter-btn" onclick="filterPosts('modeler',this)">🎨 Modéliseur</button>
+        <button class="filter-btn" onclick="filterPosts('scripter',this)">💻 Développeur</button>
+        <button class="filter-btn" onclick="filterPosts('both',this)">⚡ Les deux</button>
+        <button class="filter-btn" onclick="filterPosts('comms',this)">📣 Communication</button>
+      </div>
+      <div class="feed" id="feed">
+        <div class="empty-state"><div class="empty-icon">📭</div><p>Aucune annonce pour le moment.</p></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+const supabase = createClient(
+  'https://lourmvzgwyacvcdjpjge.supabase.co',
+  'sb_publishable_ITSh6yTSqROXFnv8x7O9dw_3gMv_WXg'
+);
+
+let currentUser = null, currentProfile = null, allPosts = [], activeFilter = 'all';
+
+async function init() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { window.location.replace('auth.html'); return; }
+  currentUser = session.user;
+
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+  if (!profile?.role) { window.location.replace('onboarding.html'); return; }
+  currentProfile = profile;
+
+  // Affiche la page
+  document.getElementById('page-loader').style.display = 'none';
+  document.getElementById('app-root').style.display = 'flex';
+
+  renderSidebar();
+  loadFeed();
+}
+init();
+
+function renderSidebar() {
+  const isOwner = currentProfile.role === 'owner';
+  const roleLabel = { owner:'Propriétaire', admin:'Créateur de contenu', comms:'Chargé de com.' }[currentProfile.role] || '';
+  const chipCls = { owner:'chip-owner', admin:'chip-dev', comms:'chip-comms' }[currentProfile.role] || '';
+
+  const links = isOwner ? [
+    { icon:'🏠', label:'Accueil', href:'home.html', active:true },
+    { icon:'📊', label:'Résultats', href:'results.html' },
+    { icon:'📋', label:'Créer une annonce', href:'post.html' },
+    { icon:'💬', label:'Messages', href:'messages.html' },
+    { icon:'🔄', label:'Changer de rôle', href:'change-role.html' },
+    { icon:'🛒', label:'Boutique', href:'shop.html' },
+    { icon:'⚙️', label:'Paramètres', href:'settings.html' },
+  ] : [
+    { icon:'🏠', label:'Accueil', href:'home.html', active:true },
+    { icon:'📊', label:'Résultats', href:'results.html' },
+    { icon:'💬', label:'Messages', href:'messages.html' },
+    { icon:'🔄', label:'Changer de rôle', href:'change-role.html' },
+    { icon:'⚙️', label:'Paramètres', href:'settings.html' },
+  ];
+
+  const linksHtml = links.map(l => `
+    <a class="nav-link${l.active?' active':''}" href="${l.href}">
+      <span class="nav-icon">${l.icon}</span>
+      <span class="nav-label">${l.label}</span>
+    </a>`).join('');
+
+  document.body.insertAdjacentHTML('afterbegin', `
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-mark">🎮 <strong>DevRecruit</strong></div>
+        <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
+      </div>
+      <div class="sidebar-profile">
+        <div class="profile-avatar">${currentProfile.email[0].toUpperCase()}</div>
+        <div>
+          <div class="profile-email">${currentProfile.email}</div>
+          <span class="chip ${chipCls}">${roleLabel}</span>
+        </div>
+      </div>
+      ${isOwner ? `<div class="sidebar-coins"><span class="coin-badge" id="sidebar-coins">${currentProfile.coins||0}</span></div>` : ''}
+      <nav class="sidebar-nav">${linksHtml}</nav>
+      <div class="sidebar-footer">
+        <button class="btn btn-ghost btn-sm sidebar-logout" onclick="signOut()">🚪 Déconnexion</button>
+      </div>
+    </aside>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+  `);
+
+  document.getElementById('app-layout').insertAdjacentHTML('afterbegin', `
+    <header class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title">Accueil</div>
+      <div class="topbar-right">${isOwner?`<span class="coin-badge">${currentProfile.coins||0}</span>`:''}</div>
+    </header>
+  `);
+
+  const theme = localStorage.getItem('dr-theme') || 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
+window.toggleSidebar = () => {
+  document.getElementById('sidebar')?.classList.toggle('open');
+  document.getElementById('sidebar-overlay')?.classList.toggle('show');
+};
+window.signOut = async () => {
+  await supabase.auth.signOut();
+  window.location.replace('auth.html');
+};
+
+async function loadFeed() {
+  const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+  allPosts = data || [];
+  renderFeed();
+}
+
+function renderFeed() {
+  const feed = document.getElementById('feed');
+  const filtered = activeFilter === 'all' ? allPosts : allPosts.filter(p => p.specialties?.includes(activeFilter));
+  if (!filtered.length) {
+    feed.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>Aucune annonce pour le moment.</p></div>`;
+    return;
+  }
+  feed.innerHTML = filtered.map(p => buildCard(p)).join('');
+}
+
+function buildCard(post) {
+  const chips = (post.specialties||[]).map(s => {
+    const map = { modeler:'🎨 Modéliseur', scripter:'💻 Développeur', both:'⚡ Les deux', comms:'📣 Communication' };
+    const cls  = { modeler:'chip-modeler', scripter:'chip-dev', both:'chip-dev', comms:'chip-comms' };
+    return `<span class="chip ${cls[s]||''}">${map[s]||s}</span>`;
+  }).join('');
+
+  const imgEl = post.image_url
+    ? `<div class="post-image"><img src="${post.image_url}" alt="${post.game_name}" loading="lazy"></div>`
+    : `<div class="post-image">🎮</div>`;
+
+  const canDm = currentProfile.role !== 'owner';
+
+  return `
+    <div class="post-card">
+      ${imgEl}
+      <div class="post-body">
+        <div class="post-header">
+          <div class="post-title">${post.game_name||'Sans titre'}</div>
+          <span class="post-theme">${post.theme||''}</span>
+        </div>
+        <div class="post-desc" id="desc-${post.id}">${post.description||''}</div>
+        <div class="post-chips" id="chips-${post.id}">${chips}</div>
+        <div class="post-footer">
+          <span class="post-owner">Par ${post.owner_email||'Anonyme'}</span>
+          <button class="expand-btn" id="expbtn-${post.id}" onclick="toggleExpand('${post.id}')">
+            Voir les détails <span class="arrow">▼</span>
+          </button>
+        </div>
+        ${canDm ? `
+        <div class="dm-row" id="dm-${post.id}">
+          <textarea class="dm-input" id="dminput-${post.id}" placeholder="Envoyer un message au propriétaire…" rows="2"></textarea>
+          <button class="btn btn-primary btn-sm" onclick="sendDm('${post.id}','${post.owner_id}')">Envoyer</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+}
+
+window.toggleExpand = (id) => {
+  const desc  = document.getElementById('desc-'+id);
+  const chips = document.getElementById('chips-'+id);
+  const dm    = document.getElementById('dm-'+id);
+  const btn   = document.getElementById('expbtn-'+id);
+  const open  = desc.classList.contains('expanded');
+  desc.classList.toggle('expanded', !open);
+  chips.classList.toggle('expanded', !open);
+  if (dm) dm.classList.toggle('expanded', !open);
+  btn.classList.toggle('open', !open);
+  btn.innerHTML = (!open ? 'Masquer ' : 'Voir les détails ') + '<span class="arrow">▼</span>';
+  if (!open) trackPostView(id);
+};
+
+const POST_VIEW_STORAGE_KEY = 'dr_post_view_timestamps';
+const POST_VIEW_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
+function getPostViewTimestamps() {
+  try {
+    return JSON.parse(localStorage.getItem(POST_VIEW_STORAGE_KEY) || '{}') || {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function shouldTrackPostView(postId) {
+  const timestamps = getPostViewTimestamps();
+  const lastSeen = timestamps[postId];
+  if (!lastSeen) return true;
+  return Date.now() - lastSeen > POST_VIEW_COOLDOWN_MS;
+}
+
+function markPostView(postId) {
+  const timestamps = getPostViewTimestamps();
+  timestamps[postId] = Date.now();
+  localStorage.setItem(POST_VIEW_STORAGE_KEY, JSON.stringify(timestamps));
+}
+
+async function trackPostView(postId) {
+  if (!shouldTrackPostView(postId)) return;
+  try {
+    const { error } = await supabase.from('analytics_events').insert([{
+      user_id: currentUser?.id || null,
+      event_type: 'post_view',
+      target_type: 'post',
+      target_id: postId,
+      metadata: { source: 'home' }
+    }]);
+    if (!error) markPostView(postId);
+  } catch (err) {
+    console.warn('Unable to track post_view', err);
+  }
+}
+
+window.sendDm = async (postId, ownerId) => {
+  const msg = document.getElementById('dminput-'+postId)?.value.trim();
+  if (!msg) return;
+  const convId = [currentUser.id, ownerId].sort().join('_');
+  await supabase.from('conversations').upsert({ id:convId, members:[currentUser.id, ownerId], last_message:msg, last_at:new Date().toISOString(), unread:{[ownerId]:1} });
+  await supabase.from('messages').insert({ conv_id:convId, sender_id:currentUser.id, text:msg });
+  document.getElementById('dminput-'+postId).value = '';
+  alert('Message envoyé !');
+};
+
+window.filterPosts = (filter, btn) => {
+  activeFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFeed();
+};
+</script>
+</body>
+</html>
+

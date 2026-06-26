@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevRecruit — Changer de rôle</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="../css/layout.css">
+  <style>
+    .current-role-box {
+      background:var(--primary-lt);border:1.5px solid var(--primary);
+      border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1.5rem;
+      display:flex;align-items:center;gap:.7rem;font-weight:600;color:var(--primary);
+    }
+    .role-options { display:grid;gap:1rem; }
+    .role-opt {
+      background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);
+      padding:1.2rem 1.4rem;cursor:pointer;transition:all var(--transition);
+      display:flex;align-items:center;gap:1rem;
+    }
+    .role-opt:hover { border-color:var(--primary);transform:translateY(-1px);box-shadow:var(--shadow-md); }
+    .role-opt.selected { border-color:var(--primary);background:var(--primary-lt); }
+    .role-opt .icon { font-size:1.8rem;flex-shrink:0; }
+    .role-opt h3 { font-size:.95rem;font-weight:700;margin-bottom:.15rem; }
+    .role-opt p { font-size:.82rem;color:var(--text2); }
+
+    .sub-opts { display:none;flex-wrap:wrap;gap:.6rem;margin-top:.8rem; }
+    .sub-opts.show { display:flex; }
+    .sub-opt {
+      border:1.5px solid var(--border);border-radius:var(--radius-sm);
+      padding:.5rem .9rem;font-size:.85rem;font-weight:600;color:var(--text2);
+      cursor:pointer;background:var(--surface);transition:all var(--transition);
+    }
+    .sub-opt:hover { border-color:var(--primary);color:var(--primary); }
+    .sub-opt.selected { border-color:var(--primary);background:var(--primary-lt);color:var(--primary); }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="app-root">
+  <div id="app-layout">
+    <main class="page-content">
+      <div class="page-heading">🔄 Changer de rôle</div>
+      <div class="card">
+        <div class="current-role-box" id="current-role-box">
+          <span>⏳</span> Chargement…
+        </div>
+        <p style="font-size:.875rem;color:var(--text2);margin-bottom:1.2rem">
+          Tu peux changer de rôle à tout moment. Sélectionne le nouveau rôle ci-dessous.
+        </p>
+        <div class="role-options" id="role-options"></div>
+        <div style="margin-top:1.5rem;text-align:right">
+          <button class="btn btn-primary" id="btn-save" onclick="saveRole()">Confirmer le changement</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script type="module">
+import { supabase } from '../js/supabase-config.js';
+import { requireAuth, toast } from '../js/layout.js';
+
+let userId = null, currentRole = null, selectedRole = null, selectedSub = null;
+
+const ROLES = [
+  { id:'owner', icon:'🎮', label:'Propriétaire de jeu', desc:'Tu cherches des collaborateurs pour ton jeu.' },
+  { id:'admin', icon:'🛠️', label:'Créateur de contenu', desc:'Tu proposes tes compétences techniques.', hasSub:true },
+  { id:'comms', icon:'📣', label:'Chargé de communication', desc:'Tu gères la promotion et la visibilité de jeux.' },
+];
+const SUBS = [
+  { id:'modeler', label:'🎨 Modéliseur 3D' },
+  { id:'scripter', label:'💻 Développeur' },
+  { id:'both', label:'⚡ Les deux' },
+];
+
+requireAuth(async (user, profile) => {
+  userId = user.id; currentRole = profile.role;
+  document.getElementById('page-title').textContent = 'Changer de rôle';
+
+  const roleLabel = { owner:'Propriétaire de jeu', admin:'Créateur de contenu', comms:'Chargé de communication' };
+  document.getElementById('current-role-box').innerHTML =
+    `<span>✅</span> Rôle actuel : <strong>${roleLabel[currentRole] || currentRole}</strong>`;
+
+  const container = document.getElementById('role-options');
+  // N'affiche que les autres rôles possibles
+  ROLES.filter(r => r.id !== currentRole).forEach(role => {
+    const el = document.createElement('div');
+    el.className = 'role-opt';
+    el.dataset.role = role.id;
+    el.innerHTML = `
+      <div class="icon">${role.icon}</div>
+      <div style="flex:1">
+        <h3>${role.label}</h3>
+        <p>${role.desc}</p>
+        ${role.hasSub ? `
+          <div class="sub-opts" id="sub-${role.id}">
+            ${SUBS.map(s => `<div class="sub-opt" data-sub="${s.id}" onclick="selectSub('${s.id}',event)">${s.label}</div>`).join('')}
+          </div>` : ''}
+      </div>
+    `;
+    el.addEventListener('click', () => selectRole(role.id));
+    container.appendChild(el);
+  });
+});
+
+window.selectRole = (id) => {
+  selectedRole = id; selectedSub = null;
+  document.querySelectorAll('.role-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.role === id);
+  });
+  document.querySelectorAll('.sub-opts').forEach(el => el.classList.remove('show'));
+  document.querySelectorAll('.sub-opt').forEach(el => el.classList.remove('selected'));
+  if (id === 'admin') document.getElementById('sub-admin')?.classList.add('show');
+};
+
+window.selectSub = (id, e) => {
+  e.stopPropagation(); selectedSub = id;
+  document.querySelectorAll('.sub-opt').forEach(el => el.classList.toggle('selected', el.dataset.sub === id));
+};
+
+window.saveRole = async () => {
+  if (!selectedRole) { toast('Sélectionne un rôle.', 'error'); return; }
+  if (selectedRole === 'admin' && !selectedSub) { toast('Choisis ta spécialité.', 'error'); return; }
+  const btn = document.getElementById('btn-save');
+  btn.innerHTML = '<span class="loader"></span>'; btn.disabled = true;
+  const { error } = await supabase.from('profiles').update({ role:selectedRole, sub:selectedSub||null }).eq('id', userId);
+  if (error) { toast('Erreur, réessaie.', 'error'); btn.innerHTML='Confirmer'; btn.disabled=false; }
+  else { toast('Rôle mis à jour !', 'success'); setTimeout(() => window.location.href='home.html', 1000); }
+};
+</script>
+</body>
+</html>

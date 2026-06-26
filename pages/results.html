@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevRecruit — Résultats</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/layout.css" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --surface: #111828;
+      --surface-strong: #141b2d;
+      --surface-soft: #151f33;
+      --surface-muted: #161f35;
+      --border: rgba(255,255,255,0.08);
+      --text: #e6e9f2;
+      --text-muted: #94a3b8;
+      --accent: #60a5fa;
+      --accent-strong: #3b82f6;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #fb7185;
+      --radius: 24px;
+      --radius-sm: 14px;
+      --shadow: 0 20px 60px rgba(0,0,0,0.25);
+      --transition: 220ms ease;
+    }
+
+    * { box-sizing: border-box; }
+
+    .page-loader {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(7, 10, 20, 0.88);
+      color: #fff;
+      font-size: 1rem;
+      z-index: 1000;
+    }
+
+    .page-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+      padding: 2rem;
+    }
+
+    .page-heading { 
+      font-size: 1.3rem; 
+      font-weight: 700; 
+      color: var(--text); 
+      margin-bottom: 0.5rem; 
+    }
+
+    .filter-group { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 0.6rem; 
+      margin-bottom: 1rem;
+    }
+
+    .filter-pill { 
+      background: rgba(255,255,255,0.05); 
+      color: var(--text); 
+      border: 1px solid transparent; 
+      border-radius: 999px; 
+      padding: 0.75rem 1rem; 
+      cursor: pointer; 
+      transition: all var(--transition); 
+      font-size: 0.92rem; 
+    }
+
+    .filter-pill.active { 
+      border-color: rgba(96, 165, 250, 0.4); 
+      background: rgba(59, 130, 246, 0.16); 
+    }
+
+    .filter-pill:hover { 
+      background: rgba(255,255,255,0.08); 
+    }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+    .kpi-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 24px;
+      padding: 1.35rem 1.4rem;
+      min-height: 124px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.75rem;
+      box-shadow: var(--shadow);
+      transition: transform var(--transition), border-color var(--transition);
+    }
+    .kpi-card:hover { transform: translateY(-2px); border-color: rgba(96,165,250,0.25); }
+    .kpi-label { display: flex; align-items: center; gap: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.14em; }
+    .kpi-value { font-size: 2.15rem; font-weight: 700; line-height: 1; }
+    .kpi-supp { color: var(--text-muted); font-size: 0.92rem; }
+
+    .section-card { background: var(--surface); border: 1px solid rgba(255,255,255,0.06); border-radius: 30px; padding: 1.5rem; box-shadow: var(--shadow); }
+    .section-title { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+    .section-title h2 { margin: 0; font-size: 1.1rem; letter-spacing: -0.02em; }
+    .section-subtitle { color: var(--text-muted); font-size: 0.94rem; }
+    .cards-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .chart-card { min-height: 360px; display: flex; flex-direction: column; }
+    .chart-card canvas { width: 100% !important; height: 100% !important; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; color: var(--text); }
+    thead th { text-align: left; font-size: 0.82rem; color: var(--text-muted); padding: 0.95rem 0.8rem; text-transform: uppercase; letter-spacing: 0.12em; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    tbody tr { border-bottom: 1px solid rgba(255,255,255,0.06); }
+    tbody td { padding: 1rem 0.8rem; font-size: 0.96rem; }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    .status-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.7rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
+    .status-excellent { background: rgba(52, 211, 153, 0.18); color: #4ade80; }
+    .status-medium { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
+    .status-low { background: rgba(251, 113, 133, 0.18); color: #fb7185; }
+    .tag-pill { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 0.35rem 0.75rem; font-size: 0.82rem; color: var(--text); background: rgba(255,255,255,0.05); }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .metric-block { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 1rem; }
+    .metric-label { color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.14em; margin-bottom: 0.75rem; }
+    .metric-value { font-size: 1.7rem; font-weight: 700; }
+    .specialty-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9rem; }
+    .specialty-item { padding: 1rem; border-radius: 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
+    .specialty-item strong { display: block; margin-bottom: 0.5rem; font-size: 0.95rem; }
+    .specialty-item span { color: var(--text-muted); }
+    .kpi-card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 1rem; }
+    .kpi-icon { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; border-radius: 18px; background: rgba(59,130,246,0.12); color: #60a5fa; font-size: 1.2rem; }
+    .kpi-change { font-size: 0.85rem; color: var(--text-muted); }
+    .trend-up { color: #34d399; }
+    .trend-down { color: #fb7185; }
+    .progress-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .progress-item { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 22px; padding: 1rem; }
+    .progress-header { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.8rem; color: var(--text-muted); font-size: 0.92rem; }
+    .progress-bar { background: rgba(255,255,255,0.06); border-radius: 999px; height: 0.85rem; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, rgba(59,130,246,1), rgba(16,185,129,1)); transition: width var(--transition); }
+    .progress-supp { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem; }
+    .metric-block { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 1.2rem; }
+    .metric-label { color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.14em; margin-bottom: 0.75rem; }
+    .metric-value { font-size: 1.7rem; font-weight: 700; }
+    .table-wrap { overflow-x: auto; }
+    .empty-state-card { padding: 2rem; text-align: center; color: var(--text-muted); border-radius: 24px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.08); }
+
+    .hidden { display: none !important; }
+    .shrinking { opacity: 0.6; }
+    .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
+
+    @media (max-width: 1180px) {
+      .dashboard-root { grid-template-columns: 1fr; }
+      .dashboard-sidebar { flex-direction: row; flex-wrap: wrap; justify-content: space-between; gap: 1rem; padding: 1.2rem; }
+      .dashboard-main { padding: 1.5rem; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .cards-row { grid-template-columns: 1fr; }
+      .stat-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .sidebar-section { width: 100%; }
+      .dashboard-sidebar { padding: 1rem; }
+      .filter-group { width: 100%; justify-content: flex-start; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .page-title h1 { font-size: 1.7rem; }
+      .dashboard-main { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div id="page-loader" class="page-loader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(7,10,20,.95);color:#e6e9f2;font-size:1rem;z-index:9999;text-align:center;padding:2rem">Chargement…</div>
+  <div id="toast-container"></div>
+  <div class="app-root" id="app-root" style="display:none">
+    <div id="app-layout">
+      <main class="page-content" id="dashboard-content">
+        <div class="page-heading">📊 Résultats</div>
+        <div class="filter-group" id="filter-group"></div>
+
+        <section class="kpi-grid" id="kpi-grid"></section>
+
+        <div class="section-card" id="ov  <script type="module">
+    // ── Supabase direct (pas de layout.js) ──────────────────────
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/module/index.js';
+    import Chart from 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.esm.min.js';
+
+    const supabase = createClient(
+      'https://lourmvzgwyacvcdjpjge.supabase.co',
+      'sb_publishable_ITSh6yTSqROXFnv8x7O9dw_3gMv_WXg',
+      { auth: { persistSession: true, autoRefreshToken: true } }
+    );
+
+        const RANGE_OPTIONS = [
+      { key: 'today', label: "Aujourd'hui" },
+      { key: '7d', label: '7 jours' },
+      { key: '30d', label: '30 jours' },
+      { key: '90d', label: '90 jours' },
+      { key: '1y', label: '1 an' },
+      { key: 'all', label: 'Tout' },
+    ];
+
+    const SPECIALTY_LABELS = {
+      modeler: 'Builder',
+      scripter: 'Scripter',
+      comms: 'UI Designer',
+      animator: 'Animator',
+      vfx: 'VFX Artist',
+    };
+
+    const CURRENT_FILTER_KEY = 'dr_results_filter';
+    const state = {
+      currentUser: null,
+      currentProfile: null,
+      filterKey: localStorage.getItem(CURRENT_FILTER_KEY) || '30d',
+      charts: {},
+      analytics: [],
+      posts: [],
+      conversations: [],
+      messages: [],
+      profiles: [],
+    };
+
+    function roleLabel(role) {
+      return ({ owner: 'Propriétaire', comms: 'Chargé de com.', admin: 'Administrateur', owner_admin: 'Propriétaire + Admin' }[role] || role);
+    }
+
+    function getDateRange(key) {
+      const now = new Date();
+      const start = new Date(now);
+      switch (key) {
+        case 'today':
+          start.setHours(0, 0, 0, 0);
+          return start;
+        case '7d':
+          start.setDate(now.getDate() - 6);
+          start.setHours(0, 0, 0, 0);
+          return start;
+        case '30d':
+          start.setDate(now.getDate() - 29);
+          start.setHours(0, 0, 0, 0);
+          return start;
+        case '90d':
+          start.setDate(now.getDate() - 89);
+          start.setHours(0, 0, 0, 0);
+          return start;
+        case '1y':
+          start.setFullYear(now.getFullYear() - 1);
+          start.setHours(0, 0, 0, 0);
+          return start;
+        default:
+          return null;
+      }
+    }
+
+    function formatShortDate(date) {
+      return new Intl.DateTimeFormat('fr-FR', { month: 'short', day: 'numeric' }).format(date);
+    }
+
+    function formatMonth(date) {
+      return new Intl.DateTimeFormat('fr-FR', { month: 'short', year: 'numeric' }).format(date);
+    }
+
+    function renderFilters() {
+      const group = document.getElementById('filter-group');
+      group.innerHTML = RANGE_OPTIONS.map(option => `
+        <button class="filter-pill ${option.key === state.filterKey ? 'active' : ''}" data-key="${option.key}">
+          ${option.label}
+        </button>
+      `).join('');
+      group.querySelectorAll('.filter-pill').forEach(btn => btn.addEventListener('click', async () => {
+        state.filterKey = btn.dataset.key;
+        localStorage.setItem(CURRENT_FILTER_KEY, state.filterKey);
+        renderFilters();
+        await loadData();
+      }));
+    }
+
+    async function loadData() {
+      const rangeStart = getDateRange(state.filterKey);
+      const analyticsQuery = supabase.from('analytics_events').select('*', { count: 'exact' }).order('created_at', { ascending: true });
+      if (rangeStart) analyticsQuery.gte('created_at', rangeStart.toISOString());
+      const [{ data: events }, { data: posts }, { data: conversations }, { data: messages }, { data: profiles }] = await Promise.all([
+        analyticsQuery,
+        supabase.from('posts').select('*'),
+        supabase.from('conversations').select('*'),
+        supabase.from('messages').select('*'),
+        supabase.from('profiles').select('*'),
+      ]);
+
+      state.analytics = events || [];
+      state.posts = posts || [];
+      state.conversations = conversations || [];
+      state.messages = messages || [];
+      state.profiles = profiles || [];
+
+      if (state.currentProfile.role === 'owner') renderOwnerDashboard();
+      else if (state.currentProfile.role === 'comms') renderCommsDashboard();
+      else if (state.currentProfile.role === 'admin') renderAdminDashboard();
+      else if (state.currentProfile.role === 'owner_admin') renderOwnerAdminDashboard();
+      else renderEmptyState();
+    }
+
+    function groupByDate(records, key = 'created_at', labelFn = formatShortDate) {
+      const groups = new Map();
+      records.forEach(event => {
+        const date = new Date(event[key]);
+        const label = labelFn(date);
+        groups.set(label, (groups.get(label) || 0) + 1);
+      });
+      return groups;
+    }
+
+    function buildTimeline(records, key, labelFn = formatShortDate) {
+      let rangeStart = getDateRange(state.filterKey);
+      if (!rangeStart) {
+        if (!records.length) return { labels: [], values: [] };
+        rangeStart = records.reduce((earliest, item) => {
+          const date = new Date(item[key]);
+          return date < earliest ? date : earliest;
+        }, new Date(records[0][key] || Date.now()));
+      }
+
+      const labels = [];
+      const values = [];
+      const now = new Date();
+      const current = new Date(rangeStart);
+      while (current <= now) {
+        const label = labelFn(current);
+        labels.push(label);
+        values.push(0);
+        current.setDate(current.getDate() + 1);
+      }
+      const counts = groupByDate(records, key, labelFn);
+      labels.forEach((label, index) => {
+        values[index] = counts.get(label) || 0;
+      });
+      return { labels, values };
+    }
+
+    function buildChart(canvasId, label, values, color) {
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+      if (state.charts[canvasId]) state.charts[canvasId].destroy();
+      state.charts[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: values.labels,
+          datasets: [{
+            label,
+            data: values.values,
+            borderColor: color,
+            backgroundColor: 'rgba(59,130,246,0.12)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 3,
+            pointBackgroundColor: color,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { mode: 'index', intersect: false },
+          },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#cbd5e1' } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#cbd5e1', precision: 0 } },
+          },
+        },
+      });
+    }
+
+    function summarizeTopSpecialties() {
+      const buckets = {
+        builder: { label: 'Builder', count: 0 },
+        scripter: { label: 'Scripter', count: 0 },
+        'ui-designer': { label: 'UI Designer', count: 0 },
+        animator: { label: 'Animator', count: 0 },
+        'vfx-artist': { label: 'VFX Artist', count: 0 },
+      };
+
+      state.posts.forEach(post => {
+        (post.specialties || []).forEach(spec => {
+          if (spec === 'modeler' || spec === 'both') buckets.builder.count += 1;
+          if (spec === 'scripter' || spec === 'both') buckets.scripter.count += 1;
+          if (spec === 'comms') buckets['ui-designer'].count += 1;
+          if (spec === 'animator') buckets.animator.count += 1;
+          if (spec === 'vfx') buckets['vfx-artist'].count += 1;
+        });
+      });
+
+      return Object.values(buckets);
+    }
+
+    function renderMetricBlock(title, value, description) {
+      return `
+        <div class="metric-block">
+          <div class="metric-label">${title}</div>
+          <div class="metric-value">${value}</div>
+          <div class="kpi-supp">${description}</div>
+        </div>
+      `;
+    }
+
+    function renderProgressBar(label, value, target) {
+      const progress = target ? Math.min(100, Math.round((value / target) * 100)) : 0;
+      return `
+        <div class="progress-item">
+          <div class="progress-header"><span>${label}</span><strong>${value}/${target}</strong></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+          <div class="progress-supp">${progress}% du target</div>
+        </div>
+      `;
+    }
+
+    function percentageChange(current, previous) {
+      if (previous === 0) return current === 0 ? 0 : 100;
+      return Math.round(((current - previous) / Math.max(previous, 1)) * 100);
+    }
+
+    function getBestDay(events) {
+      if (!events.length) return { label: null, value: 0 };
+      const counts = {};
+      events.forEach(event => {
+        const label = formatShortDate(new Date(event.created_at));
+        counts[label] = (counts[label] || 0) + 1;
+      });
+      const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] || [null, 0];
+      return { label: best[0], value: best[1] };
+    }
+
+    function bestPeriodLabel(events) {
+      const day = getBestDay(events);
+      return day.label ? `${day.label}` : 'Aucune période';
+    }
+
+    function getTopPostRows(posts, analytics) {
+      return posts.map(post => {
+        const views = analytics.filter(e => e.event_type === 'post_view' && e.target_type === 'post' && e.target_id === post.id).length;
+        const applications = analytics.filter(e => e.event_type === 'message_send' && e.target_type === 'post' && e.target_id === post.id).length;
+        return { title: post.game_name || 'Sans titre', views, applications, rate: views ? Math.round((applications / views) * 100) : 0 };
+      }).sort((a, b) => b.views - a.views).slice(0, 8);
+    }
+
+    function getBestPostLabel(posts, views, applications) {
+      const best = posts.map(post => {
+        const viewsCount = views.filter(e => e.target_id === post.id).length;
+        const applicationsCount = applications.filter(e => e.target_id === post.id).length;
+        return { title: post.game_name || 'Sans titre', score: applicationsCount * 2 + viewsCount, applicationsCount };
+      }).sort((a, b) => b.score - a.score)[0];
+      return best ? `${best.title}` : 'Aucune annonce';
+    }
+
+    function countSpecialties(posts) {
+      const counts = {};
+      posts.forEach(post => {
+        (post.specialties || []).forEach(spec => {
+          const label = SPECIALTY_LABELS[spec] || spec;
+          counts[label] = (counts[label] || 0) + 1;
+        });
+      });
+      return Object.entries(counts).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count).slice(0, 8);
+    }
+
+    function renderOwnerAdminDashboard() {
+      renderOwnerDashboard();
+      const globalStats = `
+        <div class="section-card">
+          <div class="section-title"><h2>Vue Admin complémentaire</h2></div>
+          <div class="stat-grid">
+            ${renderMetricBlock('Utilisateurs totaux', state.profiles.length, 'Nombre total d’utilisateurs')}
+            ${renderMetricBlock('Annonces totales', state.posts.length, 'Offres publiées')}
+            ${renderMetricBlock('Coins totaux', state.profiles.reduce((sum, profile) => sum + (profile.coins || 0), 0), 'Valeur totale')}
+          </div>
+        </div>
+      `;
+      document.getElementById('table-section').insertAdjacentHTML('afterend', globalStats);
+    }
+
+    function renderOwnerDashboard() {
+      const profile = state.currentProfile;
+      const userPosts = state.posts.filter(post => String(post.owner_id) === String(profile.id));
+      const userPostIds = new Set(userPosts.map(post => String(post.id)));
+      const postViews = state.analytics.filter(e => e.event_type === 'post_view' && e.target_type === 'post' && userPostIds.has(String(e.target_id)));
+      const applications = state.analytics.filter(e => e.event_type === 'message_send' && e.target_type === 'post' && userPostIds.has(String(e.target_id)));
+      const conversationsCount = state.conversations.filter(conv => (conv.members || []).map(String).includes(String(profile.id))).length;
+      const messagesReceived = state.messages.filter(msg => {
+        const conv = state.conversations.find(conv => conv.id === msg.conv_id);
+        return conv && conv.members.includes(profile.id) && msg.sender_id !== profile.id;
+      }).length;
+      const totalViews = postViews.length;
+      const totalApplications = applications.length;
+      const totalPosts = userPosts.length;
+      const conversionRate = totalViews ? Math.round((totalApplications / totalViews) * 100) : 0;
+      const responseRate = totalApplications ? Math.round((messagesReceived / totalApplications) * 100) : 0;
+      const goals = {
+        views: Math.max(100, Math.round(totalViews * 1.25)),
+        applications: Math.max(10, Math.round(totalApplications * 1.25)),
+        conversations: Math.max(5, Math.round(conversationsCount * 1.2)),
+      };
+
+      renderKpiCards([
+        { icon: '👁️', label: 'Vues annonces', value: totalViews, delta: `${percentageChange(totalViews, Math.max(totalViews - 10, 1))}%` },
+        { icon: '📩', label: 'Candidatures', value: totalApplications, delta: `${percentageChange(totalApplications, Math.max(totalApplications - 5, 1))}%` },
+        { icon: '💬', label: 'Conversations', value: conversationsCount, delta: `${percentageChange(conversationsCount, Math.max(conversationsCount - 3, 1))}%` },
+        { icon: '⚡', label: 'Conversion', value: `${conversionRate}%`, delta: `${conversionRate >= 0 ? '+' : ''}${conversionRate}%` },
+      ]);
+
+      document.getElementById('overview-section').innerHTML = `
+        <div class="section-title">
+          <div>
+            <h2>Performances des annonces</h2>
+            <p class="section-subtitle">Tendances des vues et candidatures de vos offres.</p>
+          </div>
+        </div>
+        <div class="cards-row">
+          <div class="chart-card section-card"><div class="section-title"><h2>Vues annonces</h2></div><canvas id="chart-views"></canvas></div>
+          <div class="chart-card section-card"><div class="section-title"><h2>Candidatures</h2></div><canvas id="chart-applications"></canvas></div>
+        </div>
+      `;
+
+      buildChart('chart-views', 'Vues d’annonces', buildTimeline(postViews), 'rgba(96,165,250,1)');
+      buildChart('chart-applications', 'Candidatures', buildTimeline(applications), 'rgba(52,211,153,1)');
+
+      document.getElementById('secondary-section').innerHTML = `
+        <div class="section-title"><h2>Performance</h2></div>
+        <div class="stat-grid">
+          ${renderMetricBlock('Meilleure période', bestPeriodLabel([...postViews, ...applications]), 'Jour le plus actif')}
+          ${renderMetricBlock('Annonce la plus performante', getBestPostLabel(userPosts, postViews, applications), `${totalApplications} candidatures`)}
+          ${renderMetricBlock('Taux de réponse', `${responseRate}%`, 'Messages reçus / candidatures')}
+          ${renderMetricBlock('Total annonces', totalPosts, 'Offres publiées')}
+        </div>
+      `;
+
+      document.getElementById('objectives-section').innerHTML = `
+        <div class="section-title"><h2>Objectifs</h2></div>
+        <div class="progress-grid">
+          ${renderProgressBar('Vues annonces', totalViews, goals.views)}
+          ${renderProgressBar('Candidatures', totalApplications, goals.applications)}
+          ${renderProgressBar('Conversations', conversationsCount, goals.conversations)}
+        </div>
+      `;
+
+      document.getElementById('table-section').innerHTML = `
+        <div class="section-title"><h2>Top annonces</h2></div>
+        <div class="table-wrap"><table><thead><tr><th>Titre</th><th>Vues</th><th>Candidatures</th><th>Conversion</th><th>Performance</th></tr></thead><tbody>${getTopPostRows(userPosts, state.analytics).map(row => `
+          <tr><td>${escapeHtml(row.title)}</td><td>${row.views}</td><td>${row.applications}</td><td>${row.rate}%</td><td><span class="status-pill ${row.rate >= 25 ? 'status-excellent' : row.rate >= 12 ? 'status-medium' : 'status-low'}">${row.rate >= 25 ? 'Excellent' : row.rate >= 12 ? 'Moyen' : 'Faible'}</span></td></tr>
+        `).join('')}</tbody></table></div>
+        <div class="section-title" style="margin-top:1.5rem"><h2>Top spécialités</h2></div>
+        <div class="specialty-list">${countSpecialties(userPosts).map(item => `
+          <div class="specialty-item"><strong>${item.label}</strong><span>${item.count} offres</span></div>
+        `).join('')}</div>
+      `;
+    }
+
+    function renderOwnerTable(posts, views, applications, conversionRate) {
+      const tableSection = document.getElementById('table-section');
+      if (!posts.length) {
+        tableSection.innerHTML = `
+          <div class="section-title"><h2>Top annonces</h2></div>
+          <div class="empty-state-card">Aucune annonce publiée pour le moment. Publiez une annonce pour voir vos performances ici.</div>
+        `;
+        return;
+      }
+
+      const rows = posts.map(post => {
+        const postViewCount = views.filter(e => e.target_id === post.id).length;
+        const postApplications = applications.filter(e => e.target_id === post.id).length;
+        const rate = postViewCount ? Math.round((postApplications / postViewCount) * 100) : 0;
+        let status = '<span class="status-pill status-low">Faible</span>';
+        if (rate >= 25) status = '<span class="status-pill status-excellent">Excellent</span>';
+        else if (rate >= 12) status = '<span class="status-pill status-medium">Moyen</span>';
+        return {
+          title: post.game_name || 'Sans titre',
+          views: postViewCount,
+          applications: postApplications,
+          rate,
+          status,
+        };
+      }).sort((a,b) => b.views - a.views);
+
+      tableSection.innerHTML = `
+        <div class="section-title"><h2>Top annonces</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Titre</th><th>Vues</th><th>Candidatures</th><th>Conversion</th><th>Performance</th></tr>
+            </thead>
+            <tbody>
+              ${rows.map(row => `
+                <tr>
+                  <td>${escapeHtml(row.title)}</td>
+                  <td>${row.views}</td>
+                  <td>${row.applications}</td>
+                  <td>${row.rate}%</td>
+                  <td>${row.status}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderCommsDashboard() {
+      const profileId = state.currentProfile.id;
+      const profileViews = state.analytics.filter(e => e.event_type === 'profile_view' && e.target_type === 'profile' && e.target_id === profileId).length;
+      const portfolioClicks = state.analytics.filter(e => e.event_type === 'portfolio_click' && e.target_type === 'profile' && e.target_id === profileId).length;
+      const messagesSent = state.analytics.filter(e => e.event_type === 'message_send' && e.user_id === profileId).length;
+      const conversationsCount = state.conversations.filter(conv => (conv.members || []).includes(profileId)).length;
+      const repliesReceived = state.messages.filter(msg => {
+        const conv = state.conversations.find(conv => conv.id === msg.conv_id);
+        return conv && conv.members.includes(profileId) && msg.sender_id !== profileId;
+      }).length;
+      const responseRate = messagesSent ? Math.round((repliesReceived / messagesSent) * 100) : 0;
+
+      renderKpiCards([
+        { label: 'Visites profil', value: profileViews },
+        { label: 'Clics portfolio', value: portfolioClicks },
+        { label: 'Conversations', value: conversationsCount },
+        { label: 'Messages envoyés', value: messagesSent },
+        { label: 'Réponses reçues', value: repliesReceived },
+      ]);
+
+      document.getElementById('overview-section').innerHTML = `
+        <div class="section-title">
+          <div>
+            <h2>Engagement candidat</h2>
+            <p class="section-subtitle">Suivez vos interactions et votre attractivité auprès des recruteurs.</p>
+          </div>
+        </div>
+        <div class="cards-row">
+          <div class="chart-card section-card">
+            <div class="section-title"><h2>Visites profil</h2></div>
+            <canvas id="chart-profile-views"></canvas>
+          </div>
+          <div class="chart-card section-card">
+            <div class="section-title"><h2>Clics portfolio</h2></div>
+            <canvas id="chart-portfolio-clicks"></canvas>
+          </div>
+        </div>
+        <div class="cards-row" style="margin-top:1rem;">
+          <div class="chart-card section-card">
+            <div class="section-title"><h2>Messages envoyés</h2></div>
+            <canvas id="chart-messages-sent"></canvas>
+          </div>
+          <div class="metric-block" style="min-height: 240px;">
+            <div class="metric-label">Taux de réponse</div>
+            <div class="metric-value">${responseRate}%</div>
+            <p class="section-subtitle" style="margin-top: 1rem;">${messagesSent ? 'Réponses par message envoyé.' : 'Aucune donnée de messages envoyés.'}</p>
+          </div>
+        </div>
+      `;
+
+      buildChart('chart-profile-views', 'Visites profil', buildTimeline(state.analytics.filter(e => e.event_type === 'profile_view' && e.target_type === 'profile' && e.target_id === profileId)), 'rgba(96,165,250,1)');
+      buildChart('chart-portfolio-clicks', 'Clics portfolio', buildTimeline(state.analytics.filter(e => e.event_type === 'portfolio_click' && e.target_type === 'profile' && e.target_id === profileId)), 'rgba(168,85,247,1)');
+      buildChart('chart-messages-sent', 'Messages envoyés', buildTimeline(state.analytics.filter(e => e.event_type === 'message_send' && e.user_id === profileId)), 'rgba(52,211,153,1)');
+
+      document.getElementById('secondary-section').innerHTML = `
+        <div class="section-title"><h2>Spécialités les plus recherchées</h2></div>
+        <div class="specialty-list" id="specialty-list"></div>
+      `;
+
+      const specialties = summarizeTopSpecialties();
+      const listEl = document.getElementById('specialty-list');
+      listEl.innerHTML = specialties.map(item => `
+        <div class="specialty-item">
+          <strong>${item.label}</strong>
+          <span>${item.count} annonces</span>
+        </div>
+      `).join('');
+
+      document.getElementById('table-section').innerHTML = `
+        <div class="section-title"><h2>Activité des offres</h2></div>
+        <div class="empty-state-card">Les données de candidature et de profil sont affichées via analytics_events lorsque disponibles.</div>
+      `;
+    }
+
+    function renderAdminDashboard() {
+      const totalUsers = state.profiles.length;
+      const activeUsers = new Set(state.analytics.filter(e => e.user_id).map(e => e.user_id)).size;
+      const totalPosts = state.posts.length;
+      const totalConversations = state.conversations.length;
+      const totalMessages = state.messages.length;
+      const totalCoins = state.profiles.reduce((sum, profile) => sum + (profile.coins || 0), 0);
+
+      renderKpiCards([
+        { label: 'Utilisateurs totaux', value: totalUsers },
+        { label: 'Utilisateurs actifs', value: activeUsers },
+        { label: 'Annonces totales', value: totalPosts },
+        { label: 'Conversations totales', value: totalConversations },
+        { label: 'Messages totaux', value: totalMessages },
+        { label: 'Coins totaux', value: totalCoins },
+      ]);
+
+      document.getElementById('overview-section').innerHTML = `
+        <div class="section-title"><h2>Croissance et activité</h2></div>
+        <div class="cards-row">
+          <div class="chart-card section-card"><div class="section-title"><h2>Croissance utilisateurs</h2></div><canvas id="chart-users-growth"></canvas></div>
+          <div class="chart-card section-card"><div class="section-title"><h2>Création annonces</h2></div><canvas id="chart-posts-created"></canvas></div>
+        </div>
+      `;
+
+      document.getElementById('secondary-section').innerHTML = `
+        <div class="cards-row">
+          <div class="chart-card section-card"><div class="section-title"><h2>Volume messages</h2></div><canvas id="chart-messages-volume"></canvas></div>
+          <div class="chart-card section-card"><div class="section-title"><h2>Volume conversations</h2></div><canvas id="chart-conversations-volume"></canvas></div>
+        </div>
+      `;
+
+      const userGrowthSeries = buildTimeline(state.profiles.filter(profile => profile.created_at).map(profile => ({ created_at: profile.created_at })), 'created_at');
+      const postCreationSeries = buildTimeline(state.posts.filter(post => post.created_at), 'created_at');
+      const messageSeries = buildTimeline(state.messages.filter(msg => msg.created_at), 'created_at');
+      const conversationSeries = buildTimeline(state.conversations.filter(conv => conv.last_at), 'last_at');
+
+      buildChart('chart-users-growth', 'Utilisateurs', userGrowthSeries, 'rgba(234, 179, 8, 1)');
+      buildChart('chart-posts-created', 'Annonces', postCreationSeries, 'rgba(59, 130, 246, 1)');
+      buildChart('chart-messages-volume', 'Messages', messageSeries, 'rgba(16, 185, 129, 1)');
+      buildChart('chart-conversations-volume', 'Conversations', conversationSeries, 'rgba(168, 85, 247, 1)');
+
+      renderAdminTables();
+    }
+
+    function renderAdminTables() {
+      const recruiters = state.profiles.filter(profile => profile.role === 'owner' || profile.role === 'owner_admin');
+      const postViews = state.analytics.filter(e => e.event_type === 'post_view' && e.target_type === 'post');
+      const applications = state.analytics.filter(e => e.event_type === 'message_send' && e.target_type === 'post');
+
+      const recruiterStats = recruiters.map(recruiter => {
+        const ownedPosts = state.posts.filter(post => String(post.owner_id) === String(recruiter.id));
+        const ownedIds = new Set(ownedPosts.map(post => String(post.id)));
+        const views = postViews.filter(e => ownedIds.has(String(e.target_id))).length;
+        const apps = applications.filter(e => ownedIds.has(String(e.target_id))).length;
+        return {
+          email: recruiter.email || 'Inconnu',
+          annonces: ownedPosts.length,
+          vues: views,
+          candidatures: apps,
+        };
+      }).sort((a,b) => b.vues - a.vues);
+
+      const topPosts = state.posts.map(post => {
+        const views = postViews.filter(e => e.target_id === post.id).length;
+        const apps = applications.filter(e => e.target_id === post.id).length;
+        return { title: post.game_name || 'Sans titre', views, applications: apps, rate: views ? Math.round((apps / views) * 100) : 0 };
+      }).sort((a,b) => b.views - a.views);
+
+      const specialtyCounts = summarizeTopSpecialties();
+
+      document.getElementById('table-section').innerHTML = `
+        <div class="section-title"><h2>Top recruteurs</h2></div>
+        <div class="table-wrap"><table><thead><tr><th>Email</th><th>Annonces</th><th>Vues</th><th>Candidatures</th></tr></thead><tbody>${recruiterStats.slice(0, 8).map(item => `
+          <tr><td>${escapeHtml(item.email)}</td><td>${item.annonces}</td><td>${item.vues}</td><td>${item.candidatures}</td></tr>
+        `).join('')}</tbody></table></div>
+        <div class="section-title" style="margin-top:1.5rem"><h2>Top annonces</h2></div>
+        <div class="table-wrap"><table><thead><tr><th>Titre</th><th>Vues</th><th>Candidatures</th><th>Conversion</th></tr></thead><tbody>${topPosts.slice(0, 8).map(item => `
+          <tr><td>${escapeHtml(item.title)}</td><td>${item.views}</td><td>${item.applications}</td><td>${item.rate}%</td></tr>
+        `).join('')}</tbody></table></div>
+        <div class="section-title" style="margin-top:1.5rem"><h2>Top spécialités recherchées</h2></div>
+        <div class="specialty-list">${specialtyCounts.map(item => `
+          <div class="specialty-item"><strong>${item.label}</strong><span>${item.count} annonces</span></div>
+        `).join('')}</div>
+      `;
+    }
+
+    function renderEmptyState() {
+      document.getElementById('kpi-grid').innerHTML = '';
+      document.getElementById('overview-section').innerHTML = '<div class="empty-state-card"><strong>Accès refusé</strong><p>Votre rôle ne permet pas de visualiser cette page.</p></div>';
+      document.getElementById('secondary-section').innerHTML = '';
+      document.getElementById('table-section').innerHTML = '';
+    }
+
+    function renderKpiCards(cards) {
+      document.getElementById('kpi-grid').innerHTML = cards.map(item => `
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <span class="kpi-icon">${item.icon || '•'}</span>
+            <div>
+              <div class="kpi-label">${item.label}</div>
+              <div class="kpi-change ${item.delta && item.delta.startsWith('-') ? 'trend-down' : 'trend-up'}">${item.delta || ''}</div>
+            </div>
+          </div>
+          <div class="kpi-value">${item.value}</div>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(text) {
+      return String(text || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+    }
+
+    // ── Init ─────────────────────────────────────────────────────
+    async function init() {
+      const loader = document.getElementById('page-loader');
+
+      // 1. Session
+      loader.textContent = '🔐 Vérification de la session…';
+      let session = null;
+      try {
+        const { data } = await supabase.auth.getSession();
+        session = data?.session || null;
+      } catch(e) { /* ignore */ }
+
+      if (!session) {
+        // Attendre le refresh automatique Supabase (max 5s)
+        loader.textContent = '🔄 Restauration de la session…';
+        session = await new Promise((resolve) => {
+          let subscription;
+          const timer = setTimeout(() => {
+            if (subscription) subscription.unsubscribe();
+            resolve(null);
+          }, 5000);
+          const { data } = supabase.auth.onAuthStateChange((_evt, s) => {
+            if (s) {
+              clearTimeout(timer);
+              subscription.unsubscribe();
+              resolve(s);
+            }
+          });
+          subscription = data.subscription;
+        });
+      }
+
+      if (!session) {
+        loader.textContent = '🔒 Non connecté — redirection…';
+        setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
+        return;
+      }
+
+      state.currentUser = session.user;
+
+      // 2. Profil
+      loader.textContent = '📋 Chargement du profil…';
+      const { data: profile, error: profErr } = await supabase
+        .from('profiles').select('*').eq('id', session.user.id).single();
+
+      if (profErr || !profile?.role) {
+        loader.textContent = '⚠️ Profil incomplet — ' + (profErr?.message || 'rôle manquant');
+        setTimeout(() => { window.location.href = 'onboarding.html'; }, 1800);
+        return;
+      }
+      state.currentProfile = profile;
+
+      // 3. Sidebar (tous les rôles)
+      renderSidebar(profile);
+      renderFilters();
+
+      // 4. Données
+      loader.textContent = '📊 Chargement des données…';
+      try {
+        await loadData();
+      } catch(err) {
+        loader.textContent = '❌ ' + (err.message || String(err));
+        return;
+      }
+
+      // 5. Afficher
+      loader.style.display = 'none';
+      document.getElementById('app-root').style.display = 'flex';
+    }
+
+    // ── Sidebar auto-contenue ────────────────────────────────────
+    function renderSidebar(profile) {
+      const isOwner = profile.role === 'owner';
+      const roleLabel = ({owner:'Propriétaire',admin:'Créateur de contenu',comms:'Chargé de com.'}[profile.role] || profile.role);
+      const roleChip  = ({owner:'chip-owner',admin:'chip-dev',comms:'chip-comms'}[profile.role] || '');
+
+      const navItems = [
+        { icon:'🏠', label:'Accueil',          href:'home.html' },
+        { icon:'📊', label:'Résultats',         href:'results.html', active:true },
+        ...(isOwner ? [{ icon:'📋', label:'Créer une annonce', href:'post.html' }] : []),
+        { icon:'💬', label:'Messages',          href:'messages.html' },
+        { icon:'🔄', label:'Changer de rôle',  href:'change-role.html' },
+        ...(isOwner ? [{ icon:'🛒', label:'Boutique', href:'shop.html' }] : []),
+        { icon:'⚙️', label:'Paramètres',       href:'settings.html' },
+      ];
+
+      const navHtml = navItems.map(l =>
+        `<a class="nav-link${l.active?' active':''}" href="${l.href}" style="display:flex;align-items:center;gap:.6rem;padding:.55rem .8rem;border-radius:8px;text-decoration:none;color:inherit;font-size:.9rem;font-weight:500;transition:background .15s">
+          <span>${l.icon}</span><span>${l.label}</span>
+        </a>`
+      ).join('');
+
+      document.body.insertAdjacentHTML('afterbegin', `
+        <style>
+          .dr-sidebar{position:fixed;top:0;left:0;width:256px;height:100vh;background:var(--surface,#111828);border-right:1px solid var(--border,rgba(255,255,255,.08));display:flex;flex-direction:column;z-index:300;overflow-y:auto;transition:transform .25s}
+          .dr-sidebar .nav-link:hover{background:rgba(255,255,255,.07)}
+          .dr-sidebar .nav-link.active{background:rgba(96,165,250,.15);color:#60a5fa}
+          .dr-topbar{position:sticky;top:0;height:52px;background:var(--surface,#111828);border-bottom:1px solid var(--border,rgba(255,255,255,.08));display:flex;align-items:center;gap:.8rem;padding:0 1rem;z-index:200}
+          .dr-hamburger{display:none;flex-direction:column;gap:4px;background:none;border:none;cursor:pointer;padding:.3rem}
+          .dr-hamburger span{display:block;width:20px;height:2px;background:currentColor;border-radius:2px}
+          .dr-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:290}
+          @media(max-width:768px){
+            .dr-sidebar{transform:translateX(-100%)}
+            .dr-sidebar.open{transform:none}
+            .dr-hamburger{display:flex}
+            .dr-overlay.show{display:block}
+            #app-layout{margin-left:0!important}
+          }
+          #app-layout{margin-left:256px}
+        </style>
+        <aside class="dr-sidebar" id="dr-sidebar">
+          <div style="padding:1rem 1rem .5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border,rgba(255,255,255,.08))">
+            <div style="font-weight:700;font-size:.95rem">🎮 DevRecruit</div>
+            <button onclick="drToggle()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:inherit">✕</button>
+          </div>
+          <div style="padding:.8rem 1rem;border-bottom:1px solid var(--border,rgba(255,255,255,.08));display:flex;align-items:center;gap:.7rem">
+            <div style="width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">${(profile.email||'?')[0].toUpperCase()}</div>
+            <div><div style="font-size:.82rem;opacity:.8;word-break:break-all">${profile.email||''}</div>
+            <span class="chip ${roleChip}" style="font-size:.72rem">${roleLabel}</span></div>
+          </div>
+          <nav style="padding:.6rem .5rem;display:flex;flex-direction:column;gap:2px;flex:1">${navHtml}</nav>
+          <div style="padding:.8rem 1rem;border-top:1px solid var(--border,rgba(255,255,255,.08))">
+            <button onclick="drSignOut()" style="width:100%;background:none;border:1px solid var(--border,rgba(255,255,255,.08));border-radius:8px;padding:.5rem;cursor:pointer;color:inherit;font-size:.85rem">🚪 Déconnexion</button>
+          </div>
+        </aside>
+        <div class="dr-overlay" id="dr-overlay" onclick="drToggle()"></div>
+        <header class="dr-topbar">
+          <button class="dr-hamburger" onclick="drToggle()"><span></span><span></span><span></span></button>
+          <div style="font-weight:600;font-size:.95rem">📊 Résultats</div>
+        </header>
+      `);
+
+      const theme = localStorage.getItem('dr-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+
+    window.drToggle = () => {
+      document.getElementById('dr-sidebar')?.classList.toggle('open');
+      document.getElementById('dr-overlay')?.classList.toggle('show');
+    };
+    window.drSignOut = async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'auth.html';
+    };
+
+    init().catch(err => {
+      console.error(err);
+      const loader = document.getElementById('page-loader');
+      if (loader) loader.textContent = '❌ Erreur fatale : ' + (err.message || err);
+    });
+  </script>', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+    }
+
+    init().catch(err => {
+      console.error(err);
+      document.getElementById('page-loader').textContent = 'Erreur de chargement. Rechargez la page.';
+    });
+  </script>
+</body>
+</html>

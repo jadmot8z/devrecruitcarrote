@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevRecruit — Connexion</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+      background: linear-gradient(135deg, #eef1f6 0%, #e8effe 100%);
+    }
+    .auth-wrapper { width: 100%; max-width: 420px; }
+    .brand { text-align: center; margin-bottom: 2rem; }
+    .brand-logo {
+      width: 52px; height: 52px;
+      background: var(--primary);
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      margin-bottom: 0.8rem;
+      box-shadow: 0 4px 16px rgba(59,108,247,0.3);
+    }
+    .brand h1 { font-size: 1.6rem; font-weight: 800; }
+    .brand p { color: var(--muted); font-size: 0.9rem; margin-top: 0.2rem; }
+    .auth-tabs {
+      display: flex;
+      background: var(--surface2);
+      border-radius: var(--radius);
+      padding: 4px;
+      margin-bottom: 1.5rem;
+    }
+    .tab-btn {
+      flex: 1; padding: 0.6rem; border: none;
+      background: transparent; border-radius: 9px;
+      font-size: 0.9rem; font-weight: 600; color: var(--muted);
+      transition: all var(--transition);
+    }
+    .tab-btn.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow); }
+    .auth-form { display: flex; flex-direction: column; gap: 1rem; }
+    .password-wrap { position: relative; }
+    .password-wrap .form-input { padding-right: 2.8rem; }
+    .toggle-pw {
+      position: absolute; right: 0.8rem; top: 50%;
+      transform: translateY(-50%); background: none; border: none;
+      color: var(--muted); font-size: 1.1rem; padding: 0;
+    }
+    .forgot-link {
+      text-align: right; font-size: 0.82rem;
+      color: var(--primary); font-weight: 500; cursor: pointer; margin-top: -0.5rem;
+    }
+    .forgot-link:hover { text-decoration: underline; }
+    .global-error {
+      background: var(--danger-lt); border: 1px solid var(--danger);
+      border-radius: var(--radius-sm); padding: 0.7rem 0.9rem;
+      font-size: 0.875rem; color: var(--danger); display: none;
+    }
+    .global-error.show { display: block; }
+    .forgot-screen { display: none; }
+    .forgot-screen.show { display: block; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-size: 0.875rem; color: var(--primary); cursor: pointer;
+      margin-bottom: 1rem; font-weight: 500;
+    }
+    .back-link:hover { text-decoration: underline; }
+    .success-box {
+      background: var(--accent-lt); border: 1px solid var(--accent);
+      border-radius: var(--radius-sm); padding: 0.9rem 1rem;
+      font-size: 0.875rem; color: #1e5e48; display: none; text-align: center;
+    }
+    .success-box.show { display: block; }
+    .terms { font-size: 0.78rem; color: var(--muted); text-align: center; margin-top: 0.5rem; }
+    .page-loader {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      font-size: 2rem;
+    }
+  </style>
+</head>
+<body>
+<div id="page-loader" class="page-loader">⏳</div>
+<div id="toast-container"></div>
+<div class="auth-wrapper" id="auth-wrapper" style="display:none">
+  <div class="brand">
+    <div class="brand-logo">🎮</div>
+    <h1>DevRecruit</h1>
+    <p>La plateforme de recrutement pour créateurs de jeux</p>
+  </div>
+  <div class="card" id="auth-card">
+    <div class="auth-tabs">
+      <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Connexion</button>
+      <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Inscription</button>
+    </div>
+    <div id="form-login">
+      <div class="auth-form">
+        <div class="form-group">
+          <label class="form-label">Adresse e-mail</label>
+          <input class="form-input" id="login-email" type="email" placeholder="ton@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mot de passe</label>
+          <div class="password-wrap">
+            <input class="form-input" id="login-pw" type="password" placeholder="••••••••">
+            <button class="toggle-pw" onclick="togglePw('login-pw',this)">👁</button>
+          </div>
+        </div>
+        <div class="forgot-link" onclick="showForgot()">Mot de passe oublié ?</div>
+        <div class="global-error" id="login-err"></div>
+        <button class="btn btn-primary btn-lg btn-full" id="btn-login" onclick="doLogin()">Se connecter</button>
+      </div>
+    </div>
+    <div id="form-register" class="hidden">
+      <div class="auth-form">
+        <div class="form-group">
+          <label class="form-label">Adresse e-mail</label>
+          <input class="form-input" id="reg-email" type="email" placeholder="ton@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mot de passe</label>
+          <div class="password-wrap">
+            <input class="form-input" id="reg-pw" type="password" placeholder="Minimum 6 caractères">
+            <button class="toggle-pw" onclick="togglePw('reg-pw',this)">👁</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmer le mot de passe</label>
+          <div class="password-wrap">
+            <input class="form-input" id="reg-pw2" type="password" placeholder="••••••••">
+            <button class="toggle-pw" onclick="togglePw('reg-pw2',this)">👁</button>
+          </div>
+        </div>
+        <div class="global-error" id="reg-err"></div>
+        <button class="btn btn-primary btn-lg btn-full" id="btn-register" onclick="doRegister()">Créer mon compte</button>
+        <p class="terms">En vous inscrivant, vous acceptez nos conditions d'utilisation.</p>
+      </div>
+    </div>
+  </div>
+  <div class="card forgot-screen" id="forgot-card">
+    <span class="back-link" onclick="hideForgot()">← Retour à la connexion</span>
+    <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:0.4rem">Réinitialiser le mot de passe</h2>
+    <p class="text-muted" style="margin-bottom:1rem">Entre ton e-mail, on t'envoie un lien de réinitialisation.</p>
+    <div class="auth-form">
+      <div class="form-group">
+        <label class="form-label">Adresse e-mail</label>
+        <input class="form-input" id="forgot-email" type="email" placeholder="ton@email.com">
+      </div>
+      <div class="success-box" id="forgot-success">✅ E-mail envoyé ! Vérifie ta boîte de réception.</div>
+      <div class="global-error" id="forgot-err"></div>
+      <button class="btn btn-primary btn-lg btn-full" id="btn-forgot" onclick="doForgot()">Envoyer le lien</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+const supabase = createClient(
+  'https://lourmvzgwyacvcdjpjge.supabase.co',
+  'sb_publishable_ITSh6yTSqROXFnv8x7O9dw_3gMv_WXg'
+);
+
+// Vérifie si déjà connecté
+async function checkSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+    if (profile?.role) {
+      window.location.replace('home.html');
+    } else {
+      window.location.replace('onboarding.html');
+    }
+    return;
+  }
+  // Pas connecté → affiche le formulaire
+  document.getElementById('page-loader').style.display = 'none';
+  document.getElementById('auth-wrapper').style.display = 'block';
+}
+checkSession();
+
+window.switchTab = (tab) => {
+  document.getElementById('form-login').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('form-register').classList.toggle('hidden', tab !== 'register');
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+};
+
+window.togglePw = (id, btn) => {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  btn.textContent = el.type === 'password' ? '👁' : '🙈';
+};
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.add('show');
+}
+function hideErr(id) { document.getElementById(id).classList.remove('show'); }
+function validateEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+window.doLogin = async () => {
+  hideErr('login-err');
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  if (!validateEmail(email) || !pw) {
+    showErr('login-err', 'Remplis tous les champs correctement.');
+    return;
+  }
+  const btn = document.getElementById('btn-login');
+  btn.innerHTML = '<span class="loader"></span>'; btn.disabled = true;
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pw });
+  if (error) {
+    showErr('login-err', 'Connexion échouée — e-mail ou mot de passe incorrect.');
+    btn.innerHTML = 'Se connecter'; btn.disabled = false;
+  } else {
+    const { data: profile } = await supabase
+      .from('profiles').select('role').eq('id', data.user.id).single();
+    window.location.replace(profile?.role ? 'home.html' : 'onboarding.html');
+  }
+};
+
+window.doRegister = async () => {
+  hideErr('reg-err');
+  const email = document.getElementById('reg-email').value.trim();
+  const pw = document.getElementById('reg-pw').value;
+  const pw2 = document.getElementById('reg-pw2').value;
+  if (!validateEmail(email)) { showErr('reg-err', 'E-mail invalide.'); return; }
+  if (pw.length < 6) { showErr('reg-err', 'Mot de passe trop court (6 caractères min).'); return; }
+  if (pw !== pw2) { showErr('reg-err', 'Les mots de passe ne correspondent pas.'); return; }
+
+  const btn = document.getElementById('btn-register');
+  btn.innerHTML = '<span class="loader"></span>'; btn.disabled = true;
+
+  const { data, error } = await supabase.auth.signUp({ email, password: pw });
+  if (error) {
+    showErr('reg-err', error.message.includes('already') ? 'Cet e-mail est déjà utilisé.' : 'Inscription échouée.');
+    btn.innerHTML = 'Créer mon compte'; btn.disabled = false;
+  } else {
+    // Crée le profil vide tout de suite
+    await supabase.from('profiles').insert({ id: data.user.id, email: data.user.email, coins: 0 });
+    window.location.replace('onboarding.html');
+  }
+};
+
+window.showForgot = () => {
+  document.getElementById('auth-card').classList.add('hidden');
+  document.getElementById('forgot-card').classList.add('show');
+};
+window.hideForgot = () => {
+  document.getElementById('auth-card').classList.remove('hidden');
+  document.getElementById('forgot-card').classList.remove('show');
+};
+window.doForgot = async () => {
+  const email = document.getElementById('forgot-email').value.trim();
+  if (!validateEmail(email)) { showErr('forgot-err', 'E-mail invalide.'); return; }
+  const btn = document.getElementById('btn-forgot');
+  btn.innerHTML = '<span class="loader"></span>'; btn.disabled = true;
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) showErr('forgot-err', "Impossible d'envoyer l'e-mail.");
+  else document.getElementById('forgot-success').classList.add('show');
+  btn.innerHTML = 'Envoyer le lien'; btn.disabled = false;
+};
+</script>
+</body>
+</html>

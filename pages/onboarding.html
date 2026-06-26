@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevRecruit — Mon rôle</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <style>
+    body { display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1.5rem;background:linear-gradient(135deg,#eef1f6,#e8effe); }
+    .wrap { width:100%;max-width:560px; }
+    .onboard-header { text-align:center;margin-bottom:2rem; }
+    .step-label { font-size:0.78rem;font-weight:700;color:var(--primary);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem; }
+    .onboard-header h1 { font-size:1.6rem;font-weight:800; }
+    .onboard-header p { color:var(--muted);margin-top:.4rem; }
+    .roles-grid { display:grid;gap:1rem;margin-bottom:1.5rem; }
+    .role-card { background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:1.3rem 1.5rem;cursor:pointer;transition:all var(--transition);display:flex;align-items:flex-start;gap:1rem;position:relative; }
+    .role-card:hover { border-color:var(--primary);transform:translateY(-2px);box-shadow:var(--shadow-md); }
+    .role-card.selected { border-color:var(--primary);background:var(--primary-lt); }
+    .role-card.selected .role-check { opacity:1; }
+    .role-icon { font-size:2rem;width:52px;height:52px;background:var(--bg);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+    .role-info h3 { font-size:1rem;font-weight:700;margin-bottom:.2rem; }
+    .role-info p { font-size:.85rem;color:var(--text2);line-height:1.5; }
+    .role-check { position:absolute;top:1rem;right:1rem;width:22px;height:22px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;opacity:0;transition:opacity var(--transition); }
+    .sub-options { display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-top:.8rem; }
+    .sub-options.show { display:block; }
+    .sub-options p { font-size:.85rem;font-weight:600;color:var(--text2);margin-bottom:.6rem; }
+    .sub-opts-row { display:flex;gap:.6rem;flex-wrap:wrap; }
+    .sub-opt { flex:1;min-width:120px;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .8rem;background:var(--surface);font-size:.85rem;font-weight:600;color:var(--text2);cursor:pointer;transition:all var(--transition);text-align:center; }
+    .sub-opt:hover { border-color:var(--primary);color:var(--primary); }
+    .sub-opt.selected { border-color:var(--primary);background:var(--primary-lt);color:var(--primary); }
+    .global-error { background:var(--danger-lt);border:1px solid var(--danger);border-radius:var(--radius-sm);padding:.7rem;font-size:.85rem;color:var(--danger);text-align:center;margin-bottom:1rem;display:none; }
+    .global-error.show { display:block; }
+    .page-loader { position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;font-size:2rem; }
+  </style>
+</head>
+<body>
+<div id="page-loader" class="page-loader">⏳</div>
+<div id="toast-container"></div>
+<div class="wrap" id="main-wrap" style="display:none">
+  <div class="onboard-header">
+    <div class="step-label">Bienvenue sur DevRecruit</div>
+    <h1>Quel est ton rôle ?</h1>
+    <p>Choisis comment tu veux utiliser la plateforme</p>
+  </div>
+  <div class="card">
+    <div class="roles-grid">
+      <div class="role-card" id="role-owner" onclick="selectRole('owner')">
+        <div class="role-icon">🎮</div>
+        <div class="role-info">
+          <h3>Propriétaire de jeu</h3>
+          <p>Tu développes ton propre jeu et tu cherches des collaborateurs.</p>
+        </div>
+        <div class="role-check">✓</div>
+      </div>
+      <div class="role-card" id="role-admin" onclick="selectRole('admin')">
+        <div class="role-icon">🛠️</div>
+        <div class="role-info">
+          <h3>Créateur de contenu</h3>
+          <p>Tu proposes tes compétences techniques pour rejoindre des projets.</p>
+          <div class="sub-options" id="sub-admin">
+            <p>Quelle est ta spécialité ?</p>
+            <div class="sub-opts-row">
+              <div class="sub-opt" id="sub-modeler" onclick="selectSub('modeler',event)">🎨 Modéliseur 3D</div>
+              <div class="sub-opt" id="sub-scripter" onclick="selectSub('scripter',event)">💻 Développeur</div>
+              <div class="sub-opt" id="sub-both" onclick="selectSub('both',event)">⚡ Les deux</div>
+            </div>
+          </div>
+        </div>
+        <div class="role-check">✓</div>
+      </div>
+      <div class="role-card" id="role-comms" onclick="selectRole('comms')">
+        <div class="role-icon">📣</div>
+        <div class="role-info">
+          <h3>Chargé de communication</h3>
+          <p>Tu gères la promotion et la visibilité de projets de jeux.</p>
+        </div>
+        <div class="role-check">✓</div>
+      </div>
+    </div>
+    <div class="global-error" id="onboard-err"></div>
+    <div style="text-align:center">
+      <button class="btn btn-primary btn-lg" style="min-width:200px" id="btn-confirm" onclick="confirmRole()">Continuer →</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+const supabase = createClient(
+  'https://lourmvzgwyacvcdjpjge.supabase.co',
+  'sb_publishable_ITSh6yTSqROXFnv8x7O9dw_3gMv_WXg'
+);
+
+let userId = null, selectedRole = null, selectedSub = null;
+
+async function init() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { window.location.replace('auth.html'); return; }
+  userId = session.user.id;
+
+  // Si rôle déjà défini → home
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single();
+  if (profile?.role) { window.location.replace('home.html'); return; }
+
+  document.getElementById('page-loader').style.display = 'none';
+  document.getElementById('main-wrap').style.display = 'block';
+}
+init();
+
+window.selectRole = (role) => {
+  selectedRole = role; selectedSub = null;
+  ['owner','admin','comms'].forEach(r => document.getElementById('role-'+r).classList.toggle('selected', r===role));
+  document.getElementById('sub-admin').classList.toggle('show', role==='admin');
+  document.querySelectorAll('.sub-opt').forEach(el => el.classList.remove('selected'));
+  document.getElementById('onboard-err').classList.remove('show');
+};
+window.selectSub = (sub, e) => {
+  e.stopPropagation(); selectedSub = sub;
+  document.querySelectorAll('.sub-opt').forEach(el => el.classList.remove('selected'));
+  document.getElementById('sub-'+sub).classList.add('selected');
+};
+window.confirmRole = async () => {
+  const err = document.getElementById('onboard-err');
+  if (!selectedRole) { err.textContent='Sélectionne un rôle.'; err.classList.add('show'); return; }
+  if (selectedRole==='admin' && !selectedSub) { err.textContent='Choisis ta spécialité.'; err.classList.add('show'); return; }
+  const btn = document.getElementById('btn-confirm');
+  btn.innerHTML='<span class="loader"></span>'; btn.disabled=true;
+  const { error } = await supabase.from('profiles').update({ role: selectedRole, sub: selectedSub || null }).eq('id', userId);
+  if (error) {
+    err.textContent='Erreur, réessaie.'; err.classList.add('show');
+    btn.innerHTML='Continuer →'; btn.disabled=false;
+  } else {
+    window.location.replace('home.html');
+  }
+};
+</script>
+</body>
+</html>

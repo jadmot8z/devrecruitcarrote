@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/pages/:page",
+      "destination": "/pages/:page"
+    },
+    {
+      "source": "/js/:file",
+      "destination": "/js/:file"
+    },
+    {
+      "source": "/css/:file",
+      "destination": "/css/:file"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

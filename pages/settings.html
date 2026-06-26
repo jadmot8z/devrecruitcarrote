@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevRecruit — Paramètres</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="../css/layout.css">
+  <style>
+    .settings-section { margin-bottom:2rem; }
+    .settings-section h2 { font-size:1rem;font-weight:700;color:var(--text);margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--border); }
+    .setting-row {
+      display:flex;align-items:center;justify-content:space-between;
+      padding:.9rem 0;border-bottom:1px solid var(--border);gap:1rem;
+    }
+    .setting-row:last-child { border-bottom:none; }
+    .setting-info h3 { font-size:.9rem;font-weight:600; }
+    .setting-info p { font-size:.8rem;color:var(--muted);margin-top:.15rem; }
+
+    /* Toggle switch */
+    .toggle { position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0; }
+    .toggle input { opacity:0;width:0;height:0; }
+    .slider {
+      position:absolute;inset:0;background:var(--border);border-radius:999px;
+      cursor:pointer;transition:background var(--transition);
+    }
+    .slider::before {
+      content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;
+      background:#fff;border-radius:50%;transition:transform var(--transition);
+    }
+    input:checked + .slider { background:var(--primary); }
+    input:checked + .slider::before { transform:translateX(20px); }
+
+    .danger-zone { background:var(--danger-lt);border:1px solid var(--danger);border-radius:var(--radius);padding:1.2rem 1.5rem; }
+    .danger-zone h2 { color:var(--danger);border-bottom-color:rgba(224,82,82,.2); }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="app-root">
+  <div id="app-layout">
+    <main class="page-content">
+      <div class="page-heading">⚙️ Paramètres</div>
+
+      <div class="card">
+        <!-- Apparence -->
+        <div class="settings-section">
+          <h2>🎨 Apparence</h2>
+          <div class="setting-row">
+            <div class="setting-info">
+              <h3>Mode sombre</h3>
+              <p>Passe l'interface en thème sombre pour reposer les yeux.</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-dark" onchange="toggleTheme(this)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Compte -->
+        <div class="settings-section">
+          <h2>👤 Mon compte</h2>
+          <div class="setting-row">
+            <div class="setting-info">
+              <h3>Adresse e-mail</h3>
+              <p id="account-email">…</p>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <h3>Mon rôle</h3>
+              <p id="account-role">…</p>
+            </div>
+            <a href="change-role.html" class="btn btn-secondary btn-sm">Changer</a>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <h3>Changer de mot de passe</h3>
+              <p>Un e-mail de réinitialisation sera envoyé.</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="resetPassword()">Envoyer l'e-mail</button>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="settings-section">
+          <h2>🔔 Notifications</h2>
+          <div class="setting-row">
+            <div class="setting-info">
+              <h3>Nouveaux messages</h3>
+              <p>Afficher un badge quand tu reçois un message.</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="toggle-notif" checked onchange="savePref('notif', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Zone danger -->
+        <div class="danger-zone settings-section">
+          <h2>⚠️ Zone de danger</h2>
+          <div class="setting-row">
+            <div class="setting-info">
+              <h3>Supprimer mon compte</h3>
+              <p>Cette action est irréversible. Toutes tes données seront supprimées.</p>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="deleteAccount()">Supprimer</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script type="module">
+import { supabase } from '../js/supabase-config.js';
+import { requireAuth, toast } from '../js/layout.js';
+
+requireAuth(async (user, profile) => {
+  document.getElementById('page-title').textContent = 'Paramètres';
+  document.getElementById('account-email').textContent = user.email;
+  const roleLabel = { owner:'Propriétaire de jeu', admin:'Créateur de contenu', comms:'Chargé de communication' };
+  const subLabel  = { modeler:'(Modéliseur 3D)', scripter:'(Développeur)', both:'(Modéliseur & Développeur)' };
+  document.getElementById('account-role').textContent =
+    (roleLabel[profile.role] || profile.role) + (profile.sub ? ' ' + (subLabel[profile.sub]||'') : '');
+
+  // Thème
+  const dark = localStorage.getItem('dr-theme') === 'dark';
+  document.getElementById('toggle-dark').checked = dark;
+
+  // Prefs
+  const notif = localStorage.getItem('dr-notif') !== 'false';
+  document.getElementById('toggle-notif').checked = notif;
+});
+
+window.toggleTheme = (input) => {
+  const theme = input.checked ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('dr-theme', theme);
+  toast(`Mode ${input.checked ? 'sombre' : 'clair'} activé`, 'info');
+};
+
+window.savePref = (key, val) => {
+  localStorage.setItem('dr-'+key, val);
+};
+
+window.resetPassword = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+  const { error } = await supabase.auth.resetPasswordForEmail(session.user.email);
+  if (error) toast('Erreur lors de l\'envoi.', 'error');
+  else toast('E-mail envoyé ! Vérifie ta boîte.', 'success');
+};
+
+window.deleteAccount = async () => {
+  if (!confirm('Supprimer définitivement ton compte ? Cette action est irréversible.')) return;
+  const { data: { session } } = await supabase.auth.getSession();
+  await supabase.from('profiles').delete().eq('id', session.user.id);
+  await supabase.auth.signOut();
+  window.location.href = 'auth.html';
+};
+</script>
+</body>
+</html>
