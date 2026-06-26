@@ -9,7 +9,7 @@
       "destination": "/js/:file"
     },
     {
-      "source": "/css/:file",
+      "source": "/css /:file",
       "destination": "/css/:file"
     },
     {
